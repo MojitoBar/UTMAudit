@@ -1,0 +1,23 @@
+# Core dependencies
+asyncio
+argparse
+loguru
+pydantic
+pydantic-settings
+httpx
+requests
+pandas
+fastapi
+uvicorn
+python-dotenv
+pytest
+pytest-asyncio
+
+# Browser automation
+playwright
+
+# Web app
+streamlit>=1.28.0
+
+# Data visualization
+plotly

@@ -1,0 +1,5 @@
+# 최소한의 의존성 (Python 3.13 호환)
+playwright==1.42.0
+httpx==0.27.0
+python-dotenv==1.0.1
+loguru==0.7.2
