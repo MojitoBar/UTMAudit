@@ -11,9 +11,9 @@ from src.utils.config import settings
 class MixpanelAPIClient:
     """Mixpanel API 클라이언트"""
     
-    def __init__(self, custom_settings: Optional[Dict[str, Any]] = None):
+    def __init__(self, custom_settings=None):
         # UI에서 입력받은 설정이 있으면 사용, 없으면 기본 설정 사용
-        if custom_settings:
+        if custom_settings and isinstance(custom_settings, dict):
             self.project_id = custom_settings.get('project_id', 0)
             self.service_account = custom_settings.get('service_account', '')
             self.service_password = custom_settings.get('service_password', '')

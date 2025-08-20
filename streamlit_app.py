@@ -18,7 +18,7 @@ from src.mixpanel.api_client import MixpanelAPIClient
 class UTMUserAnalyzer:
     """사용자별 UTM 분석기"""
     
-    def __init__(self, mixpanel_settings: Optional[Dict[str, Any]] = None):
+    def __init__(self, mixpanel_settings=None):
         self.browser_client = PlaywrightClient()
         self.utm_generator = UTMGenerator()
         self.mixpanel_client = MixpanelAPIClient(custom_settings=mixpanel_settings)
@@ -265,7 +265,7 @@ def display_utm_test_results(before_properties: Dict[str, Any], after_properties
         st.info("비교할 속성이 없습니다.")
 
 
-def run_utm_analysis(user_id: str, base_url: str, scenarios: List[Dict], property_query_mode: str = "기본 UTM 속성", custom_properties: List[str] = None, mixpanel_settings: Optional[Dict[str, Any]] = None):
+def run_utm_analysis(user_id: str, base_url: str, scenarios: List[Dict], property_query_mode: str = "기본 UTM 속성", custom_properties: List[str] = None, mixpanel_settings=None):
     """UTM 분석 실행"""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
@@ -538,11 +538,15 @@ def main():
         return
     
     # 설정을 전역 변수로 저장
-    st.session_state.mixpanel_settings = {
-        'service_account': mixpanel_service_account,
-        'service_password': mixpanel_service_password,
-        'project_id': mixpanel_project_id
-    }
+    try:
+        st.session_state.mixpanel_settings = {
+            'service_account': mixpanel_service_account,
+            'service_password': mixpanel_service_password,
+            'project_id': mixpanel_project_id
+        }
+    except Exception as e:
+        st.error(f"설정 저장 중 오류: {str(e)}")
+        return
     
     # 사이드바 설정
     st.sidebar.header("⚙️ 설정")
@@ -661,7 +665,8 @@ def main():
             scenarios[0]['content'] = utm_content
         
         # 분석 실행
-        run_utm_analysis(user_id, base_url, scenarios, property_query_mode, custom_properties, st.session_state.mixpanel_settings)
+        mixpanel_settings = getattr(st.session_state, 'mixpanel_settings', None)
+        run_utm_analysis(user_id, base_url, scenarios, property_query_mode, custom_properties, mixpanel_settings)
     
     # 도움말
     st.sidebar.markdown("---")
