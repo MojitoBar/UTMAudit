@@ -18,10 +18,10 @@ from src.mixpanel.api_client import MixpanelAPIClient
 class UTMUserAnalyzer:
     """사용자별 UTM 분석기"""
     
-    def __init__(self):
+    def __init__(self, mixpanel_settings: Optional[Dict[str, Any]] = None):
         self.browser_client = PlaywrightClient()
         self.utm_generator = UTMGenerator()
-        self.mixpanel_client = MixpanelAPIClient()
+        self.mixpanel_client = MixpanelAPIClient(custom_settings=mixpanel_settings)
     
     def get_user_properties(self, user_id: str, property_query_mode: str = "기본 UTM 속성", custom_properties: List[str] = None) -> Dict[str, Any]:
         """사용자의 현재 프로퍼티 조회 (Mixpanel API 사용)"""
@@ -265,13 +265,13 @@ def display_utm_test_results(before_properties: Dict[str, Any], after_properties
         st.info("비교할 속성이 없습니다.")
 
 
-def run_utm_analysis(user_id: str, base_url: str, scenarios: List[Dict], property_query_mode: str = "기본 UTM 속성", custom_properties: List[str] = None):
+def run_utm_analysis(user_id: str, base_url: str, scenarios: List[Dict], property_query_mode: str = "기본 UTM 속성", custom_properties: List[str] = None, mixpanel_settings: Optional[Dict[str, Any]] = None):
     """UTM 분석 실행"""
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     
     try:
-        analyzer = UTMUserAnalyzer()
+        analyzer = UTMUserAnalyzer(mixpanel_settings=mixpanel_settings)
         all_results = []
         
         # 진행 상황 표시
@@ -499,30 +499,50 @@ def main():
     st.title("UTM First Touch vs Last Touch 분석기")
     st.markdown("사용자별 UTM 파라미터의 First Touch와 Last Touch 변화를 분석합니다.")
     
-    # 환경 변수 설정 확인
-    try:
-        # 설정 로드 테스트
-        test_settings = Settings()
-        if test_settings.mixpanel_project_id == 0 or test_settings.mixpanel_service_account == "your_service_account_here":
-            st.error("⚠️ Mixpanel API 설정이 필요합니다!")
-            st.markdown("""
-            **다음 단계를 따라 설정해주세요:**
-            
-            1. `.env` 파일을 생성하거나 수정하세요
-            2. 다음 정보를 입력하세요:
-            ```
-            MIXPANEL_SERVICE_ACCOUNT=your_actual_service_account
-            MIXPANEL_SERVICE_PASSWORD=your_actual_service_password
-            MIXPANEL_PROJECT_ID=your_actual_project_id
-            ```
-            
-            3. Mixpanel 프로젝트 설정에서 Service Account 정보를 확인하세요
-            """)
-            return
-    except Exception as e:
-        st.error(f"⚠️ 설정 로드 실패: {str(e)}")
-        st.markdown("`.env` 파일이 올바르게 설정되었는지 확인해주세요.")
+    # Mixpanel API 설정
+    st.sidebar.markdown("### 🔑 Mixpanel API 설정")
+    
+    # 현재 설정값 가져오기
+    current_settings = Settings()
+    
+    # API 설정 입력
+    mixpanel_service_account = st.sidebar.text_input(
+        "Service Account",
+        value=current_settings.mixpanel_service_account if current_settings.mixpanel_service_account != "your_service_account_here" else "",
+        help="Mixpanel Service Account 이름"
+    )
+    
+    mixpanel_service_password = st.sidebar.text_input(
+        "Service Password",
+        value=current_settings.mixpanel_service_password if current_settings.mixpanel_service_password != "your_service_password_here" else "",
+        type="password",
+        help="Mixpanel Service Account 비밀번호"
+    )
+    
+    mixpanel_project_id = st.sidebar.number_input(
+        "Project ID",
+        value=current_settings.mixpanel_project_id if current_settings.mixpanel_project_id != 0 else 0,
+        min_value=0,
+        help="Mixpanel 프로젝트 ID (숫자)"
+    )
+    
+    # 설정 유효성 검사
+    if not mixpanel_service_account or not mixpanel_service_password or mixpanel_project_id == 0:
+        st.sidebar.error("⚠️ Mixpanel API 설정을 완료해주세요!")
+        st.sidebar.markdown("""
+        **필수 설정:**
+        - Service Account: Mixpanel 서비스 계정명
+        - Service Password: 서비스 계정 비밀번호  
+        - Project ID: Mixpanel 프로젝트 ID
+        """)
         return
+    
+    # 설정을 전역 변수로 저장
+    st.session_state.mixpanel_settings = {
+        'service_account': mixpanel_service_account,
+        'service_password': mixpanel_service_password,
+        'project_id': mixpanel_project_id
+    }
     
     # 사이드바 설정
     st.sidebar.header("⚙️ 설정")
@@ -641,15 +661,21 @@ def main():
             scenarios[0]['content'] = utm_content
         
         # 분석 실행
-        run_utm_analysis(user_id, base_url, scenarios, property_query_mode, custom_properties)
+        run_utm_analysis(user_id, base_url, scenarios, property_query_mode, custom_properties, st.session_state.mixpanel_settings)
     
     # 도움말
     st.sidebar.markdown("---")
     st.sidebar.markdown("### 💡 도움말")
     st.sidebar.markdown("""
+    **🔑 Mixpanel API 설정:**
+    - **Service Account**: Mixpanel 서비스 계정명
+    - **Service Password**: 서비스 계정 비밀번호
+    - **Project ID**: Mixpanel 프로젝트 ID (숫자)
+    
     **🎯 UTM 테스트 방법:**
     
     **1. 기본 설정:**
+    - Mixpanel API 설정 완료
     - 웹사이트 URL과 User ID 입력
     - UTM 파라미터 설정 (Source, Medium, Campaign 필수)
     
